@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "node scripts/patch-bluetooth-serial.js"
   },
   "keywords": [],
   "author": "",
@@ -13,7 +14,7 @@
     "@capacitor/android": "^8.6.0",
     "@capacitor/cli": "^8.6.0",
     "@capacitor/core": "^8.6.0",
-    "@fmesasc/capacitor-bluetooth-serial": "^6.0.3",
-    "cordova-plugin-android-permissions": "^1.1.5"
+    "cordova-plugin-android-permissions": "^1.1.5",
+    "cordova-plugin-bluetooth-serial": "^0.4.7"
   }
 }

@@ -19,3 +19,6 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Jangan hapus plugin Bluetooth Serial (Cordova) saat minify/R8
+-keep class com.megster.cordova.** { *; }

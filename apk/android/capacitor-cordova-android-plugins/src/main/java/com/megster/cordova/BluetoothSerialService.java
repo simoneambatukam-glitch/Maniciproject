@@ -206,7 +206,7 @@ public class BluetoothSerialService {
      * @see ConnectedThread#write(byte[])
      */
     public void write(byte[] out) {
-        if (out == null) return;
+        if (out == null) { Log.e(TAG, "write: data null, batal (bukan crash)."); return; }
         // Create temporary object
         ConnectedThread r;
         // Synchronize a copy of the ConnectedThread
@@ -214,8 +214,9 @@ public class BluetoothSerialService {
             if (mState != STATE_CONNECTED) return;
             r = mConnectedThread;
         }
+        if (r == null) { Log.e(TAG, "write: thread null, batal (bukan crash)."); return; }
         // Perform the write unsynchronized
-        if (r != null) r.write(out);
+        r.write(out);
     }
 
     /**
@@ -386,7 +387,6 @@ public class BluetoothSerialService {
                 try {
                     Log.i(TAG,"Trying fallback...");
                     mmSocket = (BluetoothSocket) mmDevice.getClass().getMethod("createRfcommSocket", new Class[] {int.class}).invoke(mmDevice,1);
-                    if (mmSocket == null) { Log.e(TAG, "Fallback socket null."); connectionFailed(); return; }
                     mmSocket.connect();
                     Log.i(TAG,"Connected");
                 } catch (Exception e2) {
@@ -484,7 +484,7 @@ public class BluetoothSerialService {
          * @param buffer  The bytes to write
          */
         public void write(byte[] buffer) {
-            if (buffer == null) return;
+            if (buffer == null) { Log.e(TAG, "ConnectedThread.write: buffer null, batal."); return; }
             try {
                 mmOutStream.write(buffer);
 
