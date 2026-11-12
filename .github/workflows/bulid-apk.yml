@@ -6,6 +6,7 @@ on:
     paths:
       - 'apk/**'
       - '.github/workflows/build-apk.yml'
+      - '.github/workflows/bulid-apk.yml'
 
 jobs:
   build:
@@ -25,8 +26,19 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq unzip > /dev/null
+          mkdir -p $HOME/Android/Sdk/cmdline-tools
+          curl -sL -o /tmp/cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q /tmp/cmdline-tools.zip -d $HOME/Android/Sdk/cmdline-tools
+          mv $HOME/Android/Sdk/cmdline-tools/cmdline-tools $HOME/Android/Sdk/cmdline-tools/latest
+          echo "ANDROID_HOME=$HOME/Android/Sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$HOME/Android/Sdk" >> $GITHUB_ENV
+          echo "$HOME/Android/Sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$HOME/Android/Sdk/platform-tools" >> $GITHUB_PATH
+          yes | $HOME/Android/Sdk/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null
+          $HOME/Android/Sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -56,3 +68,4 @@ jobs:
           name: kasir-pos-debug
           path: apk/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
