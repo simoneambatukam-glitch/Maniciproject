@@ -219,7 +219,9 @@ return '<section class="c"><h3>Toko</h3><p class="hint">Nama toko tampil di head
 +'<div class="fld">'+ic('msg')+'<input id="sf" placeholder="Pesan di struk" value="'+esc(s.foot)+'"></div>'
 +'<div class="row"><div class="fld">'+ic('pct')+'<input id="st" type="number" inputmode="decimal" placeholder="Pajak %" value="'+(s.tax||"")+'"></div><div class="fld">'+ic('receipt')+'<select id="sw"><option value="32"'+(s.w==32?" selected":"")+'>Struk 58mm</option><option value="48"'+(s.w==48?" selected":"")+'>Struk 80mm</option></select></div></div>'
 +'<button id="ss" class="g" style="width:100%">'+ic('check')+' Simpan Pengaturan</button></section>'
-+'<section class="c"><h3>Printer Bluetooth</h3><p class="hint">RawBT = untuk printer Bluetooth biasa (mis. iware) - pilih RawBT di dialog print. BLE = sambung langsung ke printer Bluetooth BLE.</p><div class="row"><button class="pm ' + ((s.pm||"rawbt")==="rawbt"?"g":"o") + '" data-pm="rawbt">RawBT</button><button class="pm ' + ((s.pm||"rawbt")==="ble"?"g":"o") + '" data-pm="ble">Bluetooth BLE</button></div><div class="row"><button class="o" id="bt" title="Hubungkan printer">'+ic('bt')+' Hubungkan</button><button class="o" id="tp" title="Tes cetak">'+ic('print')+' Tes Cetak</button></div><div class="mu" style="text-align:center">'+(ch&&dev&&dev.gatt.connected?"● "+esc(dev.name||"printer")+" terhubung":"○ Printer belum terhubung")+'</div></section>'
++'<section class="c"><h3>Printer Bluetooth</h3><p class="hint">RawBT = untuk printer Bluetooth biasa (mis. iware) - pilih RawBT di dialog print. BLE = sambung langsung ke printer Bluetooth BLE.</p><div class="row"><button class="pm ' + ((s.pm||"rawbt")==="rawbt"?"g":"o") + '" data-pm="rawbt">RawBT</button><button class="pm ' + ((s.pm||"rawbt")==="ble"?"g":"o") + '" data-pm="ble">Bluetooth BLE</button></div><div class="row"><button class="o" id="btPick" title="Pilih printer Bluetooth">'+ic('bt')+' Pilih Printer</button></div><div class="mu" style="text-align:center">'+(S.set.btMac?("Printer: "+esc(S.set.btMac)):"Belum ada printer dipilih")+'</div>'
++(btDevs.length?'<div class="row" style="flex-wrap:wrap">'+btDevs.map(function(d){return '<button class="o" data-btmac="'+esc(d.address||d.id)+'">'+esc(d.name||d.address||d.id)+'</button>'}).join("")+'</div>':'')
++'<div class="row"><button class="o" id="bt" title="Hubungkan printer">'+ic('bt')+' Hubungkan</button><button class="o" id="tp" title="Tes cetak">'+ic('print')+' Tes Cetak</button></div><div class="mu" style="text-align:center">'+(ch&&dev&&dev.gatt.connected?"● "+esc(dev.name||"printer")+" terhubung":"○ Printer belum terhubung")+'</div></section>'
 +'<section class="c"><h3>Data</h3><p class="hint">Backup semua produk, transaksi, dan pengaturan ke file JSON.</p><div class="row"><button class="o" id="ex" title="Backup">'+ic('down')+' Backup</button><button class="o" id="im" title="Restore">'+ic('up')+' Restore</button></div><input type="file" id="fi" accept=".json" hidden></section>'}
 
 function renderHeader(){
@@ -259,6 +261,8 @@ var q=$("#q");if(q)q.oninput=()=>{Q=q.value;var p=q.selectionStart;render();var 
 on("#newi",()=>go("p"));on("#scanGo",()=>go("x"));on("#bar",()=>{var c=$("#co");if(c)c.scrollIntoView({behavior:"smooth"})});
 all("[data-ct]",b=>b.onclick=()=>{cat=b.dataset.ct;render()});
 all("[data-pm]",b=>b.onclick=()=>{S.set.pm=b.dataset.pm;save();render();toast("Mode cetak: "+(b.dataset.pm==="rawbt"?"RawBT":"Bluetooth BLE"))});
+on("#btPick",()=>{ btListDevices(); });
+all("[data-btmac]",b=>b.onclick=()=>{ S.set.btMac=b.dataset.btmac; btDevs=[]; save(); render(); toast("Printer dipilih: "+b.dataset.btmac); });
 all("[data-a]",b=>b.onclick=()=>{var i=S.items.find(x=>x.id==b.dataset.a);if(i)addCart(i)});
 all("[data-pl]",b=>b.onclick=()=>{var c=cart[b.dataset.pl],i=S.items.find(x=>x.id==c.id);if(i&&stk(i)&&c.q+1>i.s)return toast("Stok habis");c.q++;render()});
 all("[data-m]",b=>b.onclick=()=>{var c=cart[b.dataset.m];if(--c.q<1)cart.splice(b.dataset.m,1);render()});
@@ -371,7 +375,63 @@ return '<div class="rc"><div class="logo"><img src="'+LOGO+'" alt="logo"></div>'
 +'<div class="div"></div>'
 +'<div class="foot"><i>'+esc(S.set.foot)+'</i></div></div>';
 }
+// ===== NATIVE (APK Capacitor): cetak langsung ke printer Bluetooth Classic (SPP) =====
+// Tanpa RawBT, tanpa Web Bluetooth. Pakai plugin bluetooth-serial (Cordova).
+// Printer iware (Bluetooth biasa) hanya bisa dijangkau lewat jalur ini.
+function isNative(){ try{ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }catch(e){ return !!window.Capacitor; } }
+function hasBTSerial(){ return typeof window.bluetoothSerial !== "undefined"; }
+var btDevs = []; // daftar perangkat paired (native)
+function btEnsure(){
+  return new Promise(function(resolve, reject){
+    if(!hasBTSerial()) return reject(new Error("Plugin Bluetooth belum siap. Tutup lalu buka lagi aplikasinya."));
+    window.bluetoothSerial.isEnabled(function(){
+      window.bluetoothSerial.isConnected(function(){ resolve(true); }, function(){
+        var mac = S.set.btMac;
+        if(!mac) return reject(new Error("Pilih printer dulu di Setting > Printer Bluetooth."));
+        window.bluetoothSerial.connect(mac, function(){ resolve(true); }, function(){
+          window.bluetoothSerial.connectInsecure(mac, function(){ resolve(true); }, function(e2){
+            reject(new Error("Gagal sambung ke printer. Pastikan printer nyala & sudah di-pair di Bluetooth HP."));
+          });
+        });
+      });
+    }, function(){
+      window.bluetoothSerial.enable(function(){ btEnsure().then(resolve).catch(reject); }, function(){
+        reject(new Error("Nyalakan Bluetooth dulu."));
+      });
+    });
+  });
+}
+function sendBTNATIVE(bytes){
+  return btEnsure().then(function(){
+    var u = new Uint8Array([27,64].concat(Array.from(bytes),[10,10,10,10]));
+    return new Promise(function(resolve, reject){
+      var i = 0;
+      (function next(){
+        if(i >= u.length) return resolve();
+        var chunk = u.slice(i, i+512);
+        i += chunk.length;
+        window.bluetoothSerial.write(chunk.buffer, function(){ setTimeout(next, 30); }, function(e){
+          reject(new Error("Gagal kirim ke printer."));
+        });
+      })();
+    });
+  });
+}
+function btListDevices(){
+  if(!hasBTSerial()){ toast("Hanya tersedia di aplikasi (APK)."); return; }
+  window.bluetoothSerial.list(function(devs){
+    btDevs = devs || [];
+    if(!btDevs.length){ toast("Tidak ada printer yang di-pair. Pair dulu di Bluetooth HP."); return; }
+    render();
+    toast("Ketuk nama printer untuk memilih");
+  }, function(){ toast("Gagal membaca daftar Bluetooth."); });
+}
+
 function out(t){
+if(isNative()){
+  sendBTNATIVE(rcpt(t)).then(function(){ toast("Terkirim ke printer"); }).catch(function(e){ toast("Gagal cetak: "+e.message); });
+  return;
+}
 if((S.set.pm||"rawbt")==="rawbt"){
   $("#rcptHtml").innerHTML=rcptHTML(t);
   toast("Pilih RawBT di dialog print");
