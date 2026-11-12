@@ -243,7 +243,7 @@ return '<section class="c"><h3>Toko</h3><p class="hint">Nama toko tampil di head
 +'<button id="ss" class="g" style="width:100%">'+ic('check')+' Simpan Pengaturan</button></section>'
 +'<section class="c"><h3>Printer Bluetooth</h3>' + (function(){ var ci = (typeof plogCrashInfo === "function") ? plogCrashInfo() : ""; return ci ? '<p class="hint" style="color:#b3261e;background:#fdecea;border:1px solid #f5c6c6;border-radius:10px;padding:10px">⚠️ ' + ci + '</p>' : ''; })() + '<p class="hint">RawBT = untuk printer Bluetooth biasa (mis. iware) - pilih RawBT di dialog print. BLE = sambung langsung ke printer Bluetooth BLE.</p><div class="row"><button class="pm ' + ((s.pm||"rawbt")==="rawbt"?"g":"o") + '" data-pm="rawbt">RawBT</button><button class="pm ' + ((s.pm||"rawbt")==="ble"?"g":"o") + '" data-pm="ble">Bluetooth BLE</button></div><div class="row"><button class="o" id="btPick" title="Pilih printer Bluetooth">'+ic('bt')+' Pilih Printer</button></div><div class="mu" style="text-align:center">'+(S.set.btMac?("Printer: "+esc(S.set.btMac)):"Belum ada printer dipilih")+'</div>'
 +(btDevs.length?'<div class="row" style="flex-wrap:wrap">'+btDevs.map(function(d){return '<button class="o" data-btmac="'+esc(d.address||d.id)+'">'+esc(d.name||d.address||d.id)+'</button>'}).join("")+'</div>':'')
-+'<div class="row"><button class="o" id="bt" title="Hubungkan printer">'+ic('bt')+' Hubungkan</button><button class="o" id="tp" title="Tes cetak">'+ic('print')+' Tes Cetak</button></div><div class="mu" style="text-align:center">'+(ch&&dev&&dev.gatt.connected?"● "+esc(dev.name||"printer")+" terhubung":"○ Printer belum terhubung")+'</div><div class="row"><button class="o" id="plogShow" title="Lihat log print">Lihat Log Print</button><button class="o" id="plogCopy" title="Salin log print">Salin Log</button></div><textarea id="plogBox" readonly rows="6" style="width:100%;display:none;font-size:11px;margin-top:6px" placeholder="Belum ada log print."></textarea></section>'
++'<div class="row"><button class="o" id="bt" title="Hubungkan printer">'+ic('bt')+' Hubungkan</button><button class="o" id="tp" title="Tes cetak">'+ic('print')+' Tes Cetak</button></div><div class="mu" style="text-align:center">'+(btConn.ok?"● "+esc(btConn.name||"printer")+" terhubung":(ch&&dev&&dev.gatt.connected?"● "+esc(dev.name||"printer")+" terhubung":"○ Printer belum terhubung"))+'</div><div class="row"><button class="o" id="plogShow" title="Lihat log print">Lihat Log Print</button><button class="o" id="plogCopy" title="Salin log print">Salin Log</button></div><textarea id="plogBox" readonly rows="6" style="width:100%;display:none;font-size:11px;margin-top:6px" placeholder="Belum ada log print."></textarea></section>'
 +'<section class="c"><h3>Data</h3><p class="hint">Backup semua produk, transaksi, dan pengaturan ke file JSON.</p><div class="row"><button class="o" id="ex" title="Backup">'+ic('down')+' Backup</button><button class="o" id="im" title="Restore">'+ic('up')+' Restore</button></div><input type="file" id="fi" accept=".json" hidden></section>'}
 
 function renderHeader(){
@@ -286,7 +286,7 @@ all("[data-pm]",b=>b.onclick=()=>{S.set.pm=b.dataset.pm;save();render();toast("M
 on("#btPick",()=>{ btListDevices(); });
 on("#plogShow",()=>{ var b=$("#plogBox"); if(!b) return; if(b.style.display==="none"){ b.value=plogText(); b.style.display="block"; } else { b.style.display="none"; } });
 on("#plogCopy",()=>{ plogCopy(plogText()); });
-all("[data-btmac]",b=>b.onclick=()=>{ S.set.btMac=b.dataset.btmac; btDevs=[]; save(); render(); toast("Printer dipilih: "+b.dataset.btmac); });
+all("[data-btmac]",b=>b.onclick=()=>{ S.set.btMac=b.dataset.btmac; btDevs=[]; btConn={ok:false,name:""}; save(); render(); toast("Printer dipilih: "+b.dataset.btmac); });
 all("[data-a]",b=>b.onclick=()=>{var i=S.items.find(x=>x.id==b.dataset.a);if(i)addCart(i)});
 all("[data-pl]",b=>b.onclick=()=>{var c=cart[b.dataset.pl],i=S.items.find(x=>x.id==c.id);if(i&&stk(i)&&c.q+1>i.s)return toast("Stok habis");c.q++;render()});
 all("[data-m]",b=>b.onclick=()=>{var c=cart[b.dataset.m];if(--c.q<1)cart.splice(b.dataset.m,1);render()});
@@ -317,7 +317,13 @@ all("[data-r]",b=>b.onclick=()=>out(S.tx.find(t=>t.no==b.dataset.r)));
 all("[data-x]",b=>b.onclick=()=>{if(confirm("Hapus transaksi?")){S.tx=S.tx.filter(t=>t.no!=b.dataset.x);save();render()}});
 on("#csv",()=>{var r=["no,waktu,item,diskon,pajak,total,bayar,kembali"];S.tx.forEach(t=>r.push([t.no,new Date(t.t).toLocaleString("id-ID"),'"'+t.items.map(i=>i.q+"x "+i.n).join("; ").replace(/"/g,"'")+'"',t.disc,t.tax||0,t.total,t.pay,t.chg].join(",")));dl("transaksi.csv",r.join("\n"),"text/csv")});
 on("#ss",()=>{S.set={name:$("#sn").value,tag:$("#sg").value,addr:$("#sa").value,foot:$("#sf").value,w:+$("#sw").value,tax:+$("#st").value||0,pm:S.set.pm||"rawbt"};save();toast("Tersimpan");render()});
-on("#bt",()=>conn().then(()=>{toast("Printer nyambung");render()}).catch(e=>toast(e.message)));
+on("#bt",()=>{
+  if(isNative()){
+    btEnsure().then(()=>{ toast("Printer nyambung"); render(); }).catch(e=>{ toast(e.message); render(); });
+  } else {
+    conn().then(()=>{toast("Printer nyambung");render()}).catch(e=>toast(e.message));
+  }
+});
 on("#tp",()=>out({no:0,t:Date.now(),items:[{n:"Tes cetak",p:1000,q:1}],disc:0,tax:0,total:1000,pay:1000,chg:0}));
 on("#ex",()=>dl("backup-kasir.json",JSON.stringify(S),"application/json"));on("#im",()=>$("#fi").click());
 var fi=$("#fi");if(fi)fi.onchange=e=>{var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=()=>{try{var o=JSON.parse(r.result);if(!o.items)throw 0;S=Object.assign(S,o);save();toast("Restore berhasil");render()}catch(x){toast("File backup ga valid")}};r.readAsText(f)};
@@ -407,16 +413,18 @@ return '<div class="rc"><div class="logo"><img src="'+LOGO+'" alt="logo"></div>'
 // tidak rusak saat lewat bridge (bukan base64, bukan string UTF-8).
 // Semua operasi Bluetooth dibungkus try/catch: error tampil sebagai toast, app tidak crash.
 function isNative(){ try{ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }catch(e){ return !!window.Capacitor; } }
-var _BT = null;
-function getBT(){
-  if(_BT) return _BT;
-  if(window.Capacitor && window.Capacitor.registerPlugin){
-    try{ _BT = window.Capacitor.registerPlugin("BluetoothSerial"); }catch(e){ _BT = null; }
+// Panggil plugin Capacitor LANGSUNG via native bridge.
+// PENTING: native-bridge.js TIDAK menyediakan window.Capacitor.registerPlugin —
+// itu hanya ada di @capacitor/core (untuk app yang di-bundle). Di app single-file,
+// satu-satunya jalan yang dijamin ada adalah window.Capacitor.nativePromise().
+// Itu juga yang dipakai di dalam registerPlugin, jadi panggil native-nya langsung.
+function capCall(method, options){
+  if(!window.Capacitor || typeof window.Capacitor.nativePromise !== "function"){
+    return Promise.reject(new Error("Bridge Capacitor belum siap. Tutup lalu buka lagi aplikasinya."));
   }
-  return _BT;
+  return window.Capacitor.nativePromise("BluetoothSerial", method, options || {});
 }
-function hasBT(){ return !!getBT(); }
-var btDevs = []; // daftar perangkat hasil scan (native)
+function hasBT(){ return !!(window.Capacitor && typeof window.Capacitor.nativePromise === "function"); }
 
 // --- Izin runtime BLUETOOTH_CONNECT / BLUETOOTH_SCAN (Android 12+) ---
 // Dicek + diminta DULU sebelum connect/write/scan. Kalau ditolak, lempar Error
@@ -437,46 +445,52 @@ function btPerms(names){
 }
 function btPermConnect(){ return btPerms(["BLUETOOTH_CONNECT"]); }
 function btPermScan(){ return btPerms(["BLUETOOTH_SCAN","BLUETOOTH_CONNECT"]); }
+var btDevs = []; // daftar perangkat hasil scan (native)
+var btConn = { ok:false, name:"" }; // status koneksi native (untuk label "● terhubung")
+function btName(mac){
+  var d = btDevs.filter(function(x){ return (x.address||x.id) === mac; })[0];
+  return d ? (d.name || d.address || d.id) : mac;
+}
+function btErrMsg(e){
+  var m = (e && e.message) ? e.message : String(e);
+  if(/not implemented|UNIMPLEMENTED/i.test(m)) return "Plugin Bluetooth tidak ketemu di aplikasi. Install ulang APK terbaru.";
+  if(/permission|izin|denied|BLUETOOTH_CONNECT/i.test(m)) return "Izin Bluetooth belum diberikan. Izinkan 'Perangkat di sekitar' di Pengaturan aplikasi.";
+  return m;
+}
 
 async function btEnsure(){
-  var BT = getBT();
-  if(!BT) throw new Error("Plugin Bluetooth belum siap. Tutup lalu buka lagi aplikasinya.");
   var mac = S.set.btMac;
   if(!mac) throw new Error("Pilih printer dulu di Setting > Printer Bluetooth.");
   try{
     await btPermConnect(); // izin dulu, baru panggil API Bluetooth
     plog("btEnsure: cek isEnabled");
-    var st = await BT.isEnabled();
+    var st = await capCall("isEnabled");
     if(!st || !st.enabled){
       plog("btEnsure: BT mati, minta enable");
-      st = await BT.enable();
+      st = await capCall("enable");
       if(!st || !st.enabled) throw new Error("Nyalakan Bluetooth dulu.");
     }
     plog("btEnsure: isEnabled OK, cek isConnected");
-    var c = await BT.isConnected({address: mac});
-    if(c && c.connected){ plog("btEnsure: sudah terhubung"); return true; }
+    var c = await capCall("isConnected", {address: mac});
+    if(c && c.connected){ plog("btEnsure: sudah terhubung"); btConn = {ok:true, name: btName(mac)}; return true; }
     plog("btEnsure: connect secure " + mac);
     try{
-      await BT.connect({address: mac});
-      plog("btEnsure: connect OK"); return true;
+      await capCall("connect", {address: mac});
     }catch(e1){
       plog("btEnsure: connect gagal, coba insecure");
-      try{
-        await BT.connectInsecure({address: mac});
-        plog("btEnsure: connectInsecure OK"); return true;
-      }catch(e2){
-        throw new Error("Gagal sambung ke printer. Pastikan printer nyala & sudah di-pair di Bluetooth HP.");
-      }
+      await capCall("connectInsecure", {address: mac});
     }
+    plog("btEnsure: connect OK"); btConn = {ok:true, name: btName(mac)}; return true;
   }catch(e){
-    if(e && e.message) throw e;
-    throw new Error("Gagal sambung ke printer: " + String(e));
+    btConn = {ok:false, name:""};
+    var m = btErrMsg(e);
+    plog("btEnsure: GAGAL " + m);
+    if(/Gagal sambung|Nyalakan Bluetooth|Pilih printer|Plugin Bluetooth|Izin Bluetooth|Bridge Capacitor/.test(m)) throw new Error(m);
+    throw new Error("Gagal sambung ke printer: " + m);
   }
 }
 
 async function sendBTNATIVE(bytes){
-  var BT = getBT();
-  if(!BT) throw new Error("Plugin Bluetooth belum siap. Tutup lalu buka lagi aplikasinya.");
   var mac = S.set.btMac;
   if(!mac) throw new Error("Pilih printer dulu di Setting > Printer Bluetooth.");
   try{
@@ -490,25 +504,26 @@ async function sendBTNATIVE(bytes){
       var chunk = u.slice(i, i+512);
       i += chunk.length; c++;
       plog("sendBTNATIVE: tulis chunk " + c + " (" + chunk.length + " byte)");
-      await BT.write({address: mac, value: Array.from(chunk)}); // array angka = byte mentah
+      await capCall("write", {address: mac, value: Array.from(chunk)}); // array angka = byte mentah
       await new Promise(function(r){ setTimeout(r, 30); });
     }
     plog("sendBTNATIVE: selesai semua chunk"); plogDone();
   }catch(e){
     plogDone();
-    if(e && e.message) throw e;
-    throw new Error("Gagal kirim ke printer: " + String(e));
+    var m = btErrMsg(e);
+    plog("sendBTNATIVE: GAGAL " + m);
+    if(e && e.message) throw new Error(m);
+    throw new Error("Gagal kirim ke printer: " + m);
   }
 }
 
 async function btListDevices(){
-  var BT = getBT();
-  if(!BT){ toast("Hanya tersedia di aplikasi (APK)."); return; }
+  if(!hasBT()){ toast("Hanya tersedia di aplikasi (APK)."); return; }
   try{
     await btPermScan(); // izin SCAN (+ CONNECT) dulu
     toast("Mencari printer... (pastikan printer nyala)");
     plog("btListDevices: scan mulai");
-    var r = await BT.scan();
+    var r = await capCall("scan");
     var devs = (r && r.devices) ? r.devices : [];
     btDevs = devs.filter(function(d){ return d && (d.address || d.id); });
     plog("btListDevices: ketemu " + btDevs.length + " perangkat");
@@ -516,7 +531,9 @@ async function btListDevices(){
     render();
     toast("Ketuk nama printer untuk memilih");
   }catch(e){
-    toast("Gagal cari printer: " + (e && e.message ? e.message : e));
+    var m = btErrMsg(e);
+    plog("btListDevices: GAGAL " + m);
+    toast("Gagal cari printer: " + m);
   }
 }
 
