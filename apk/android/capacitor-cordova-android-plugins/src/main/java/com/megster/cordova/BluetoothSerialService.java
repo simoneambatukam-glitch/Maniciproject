@@ -206,6 +206,7 @@ public class BluetoothSerialService {
      * @see ConnectedThread#write(byte[])
      */
     public void write(byte[] out) {
+        if (out == null) return;
         // Create temporary object
         ConnectedThread r;
         // Synchronize a copy of the ConnectedThread
@@ -214,7 +215,7 @@ public class BluetoothSerialService {
             r = mConnectedThread;
         }
         // Perform the write unsynchronized
-        r.write(out);
+        if (r != null) r.write(out);
     }
 
     /**
@@ -477,6 +478,7 @@ public class BluetoothSerialService {
          * @param buffer  The bytes to write
          */
         public void write(byte[] buffer) {
+            if (buffer == null) return;
             try {
                 mmOutStream.write(buffer);
 

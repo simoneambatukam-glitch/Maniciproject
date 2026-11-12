@@ -401,6 +401,14 @@ function btEnsure(){
     });
   });
 }
+function u8ToB64(u8){var s="";for(var i=0;i<u8.length;i++)s+=String.fromCharCode(u8[i]);return btoa(s);}
+function btWriteB64(b64, ok, err){
+  // Kirim sebagai base64 string via cordova.exec langsung (bukan ArrayBuffer),
+  // supaya data tidak rusak saat lewat bridge Capacitor.
+  if(window.cordova && cordova.exec){ cordova.exec(ok, err, "BluetoothSerial", "write", [b64]); }
+  else if(window.bluetoothSerial){ window.bluetoothSerial.write(b64, ok, err); }
+  else { err(new Error("Plugin Bluetooth belum siap.")); }
+}
 function sendBTNATIVE(bytes){
   return btEnsure().then(function(){
     var u = new Uint8Array([27,64].concat(Array.from(bytes),[10,10,10,10]));
@@ -410,7 +418,7 @@ function sendBTNATIVE(bytes){
         if(i >= u.length) return resolve();
         var chunk = u.slice(i, i+512);
         i += chunk.length;
-        window.bluetoothSerial.write(chunk.buffer, function(){ setTimeout(next, 30); }, function(e){
+        btWriteB64(u8ToB64(chunk), function(){ setTimeout(next, 30); }, function(e){
           reject(new Error("Gagal kirim ke printer."));
         });
       })();

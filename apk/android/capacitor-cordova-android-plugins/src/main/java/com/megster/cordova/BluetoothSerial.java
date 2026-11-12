@@ -127,9 +127,24 @@ public class BluetoothSerial extends CordovaPlugin {
 
         } else if (action.equals(WRITE)) {
 
-            byte[] data = args.getArrayBuffer(0);
-            bluetoothSerialService.write(data);
-            callbackContext.success();
+            // Terima base64 string (aman lewat bridge Capacitor) atau ArrayBuffer (Cordova asli).
+            byte[] data = null;
+            try {
+                Object arg0 = args.opt(0);
+                if (arg0 instanceof String) {
+                    data = android.util.Base64.decode((String) arg0, android.util.Base64.DEFAULT);
+                } else {
+                    data = args.getArrayBuffer(0);
+                }
+            } catch (Exception e) {
+                data = null;
+            }
+            if (data != null) {
+                bluetoothSerialService.write(data);
+                callbackContext.success();
+            } else {
+                callbackContext.error("Data tulis kosong / tidak dikenali.");
+            }
 
         } else if (action.equals(AVAILABLE)) {
 
