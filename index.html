@@ -100,6 +100,28 @@ main{max-width:1120px;margin:0 auto;padding:14px 12px}
 /* ---- floating bar ---- */
 #bar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:6;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#e8cf9a,#c9a227);color:#241a05;border-radius:16px;padding:13px 18px;font-weight:800;box-shadow:0 10px 28px rgba(154,123,18,.45)}
 #t{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--green-900);color:#fff;padding:11px 18px;border-radius:99px;display:none;max-width:90%;z-index:9;box-shadow:0 10px 26px rgba(0,0,0,.3);font-weight:600}
+
+#rcptHtml{display:none}
+@media print{
+  body{background:#fff!important}
+  header,main,.fb{display:none!important}
+  #rcptHtml{display:block!important;color:#111}
+  #rcptHtml .rc{width:72mm;margin:0 auto;font-family:Georgia,serif;color:#111}
+  #rcptHtml .rc .logo{width:64px;height:64px;border-radius:50%;margin:0 auto 10px;overflow:hidden}
+  #rcptHtml .rc .logo img{width:100%;height:100%;object-fit:cover;display:block}
+  #rcptHtml .rc .name{text-align:center;font-size:24px;color:#123524}
+  #rcptHtml .rc .tag{text-align:center;font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:#8a6d1f;margin-top:4px}
+  #rcptHtml .rc .addr{text-align:center;font-size:11px;color:#666;margin-top:6px;font-family:system-ui,sans-serif}
+  #rcptHtml .rc .div{height:1px;background:#c9a227;margin:12px 0}
+  #rcptHtml .rc .meta,#rcptHtml .rc .row{display:flex;justify-content:space-between;font-size:12px;font-family:system-ui,sans-serif}
+  #rcptHtml .rc .item{margin:8px 0;font-family:system-ui,sans-serif}
+  #rcptHtml .rc .item .n{font-size:13px;font-weight:600}
+  #rcptHtml .rc .item .d{display:flex;justify-content:space-between;font-size:13px;color:#444}
+  #rcptHtml .rc .tot{background:#123524;color:#fff;border-radius:8px;padding:9px 11px;display:flex;justify-content:space-between;font-family:system-ui,sans-serif;margin-top:10px}
+  #rcptHtml .rc .tot b{font-size:15px;color:#e8cf9a}
+  #rcptHtml .rc .foot{text-align:center;font-size:11px;color:#777;margin-top:12px;font-family:system-ui,sans-serif}
+  #rcptHtml .rc .foot i{font-family:Georgia,serif;font-size:13px;color:#555}
+}
 </style>
 </head>
 <body>
@@ -140,7 +162,7 @@ home:'<path d="M3 11 12 4l9 7v9h-6v-6H9v6H3z"/>'
 function ic(n,c){return '<svg class="i '+(c||"")+'" viewBox="0 0 24 24" aria-hidden="true">'+I[n]+'</svg>'}
 var LOGO="data:image/jpeg;base64,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";
 var LOGO_RASTER={w:150,h:129,bw:19,b64:"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAf/gAAAAAAAAAAAAAAAAAAAAAH///4AAAAAAAAAAAAAAAAAAAAf////4AAAAAAAAAAAAAAAAAAA//////wAAAAAAAAAAAAAAAAAB///Af//gAAAAAAAAAAAAAAAAB//AAAD/+AAAAAAAAAAAAAAAAB/8AAAAD/4AAAAAAAAAAAAAAAB/4AAAAAH/gAAAAAAAAAAAAAAB/wAH//gAP+AAAAAAAAAAAAAAB/wA////wA/4AAAAAAAAAAAAAA/wB/////gD/AAAAAAAAAAAAAA/wD//////AP8AAAAAAAAAAAAAfwD//////8A/gAAAAAAAAAAAAP4D///////wH8AAAAAAAAAAAAH4D////////AfgAAAAAAAAAAAH8D////////8D+AAAAAAAAAAAD+D/////////wfwAAAAAAAAAAB+B/////////+B+AAAAAAAAAAA/A//////////wPwAAAAAAAAAAfg///////////B+AAAAAAAAAAPwf//////////4PgAAAAAAAAAD4P///////////B8AAAAAAAAAB8H///////////4PgAAAAAAAAA+D////////////B8AAAAAAAAAfB////////////4fgAAAAAAAAHw/////////////D4AAAAAAAAD4f////////////4fAAAAAAAAB8P////////////+D4AAAAAAAAfD/////////////w+AAAAAAAAPh/////////////+HwAAAAAAAHw//////////////w8AAAAAAAB8P/////////////8PgAAAAAAA+H//////////////h8AAAAAAAPj////g/////////8fAAAAAAAHw////AB/////////D4AAAAAAB8f///AAP////////4+AAAAAAAeH///geB////////+HgAAAAAAPj///wf4f4B//////x8AAAAAADw///4f9D4AP/Af//8PAAAAAAB8f//8P/wsAB/AD///DwAAAAAAeH//+H/+MH4fAAf//4+AAAAAAHh///D//gD/Cg8D//+HgAAAAAD4///h//4D/ww4w///x4AAAAAA+P//w//+B/+If8P//8fAAAAAAPD//4f//g//gL/D///DwAAAAADx//8P//of/oF/4///w8AAAAcB8f/+H//8H/+D/+P//+PAAAAIgfH//B//+D//h//D///j4AAACIHh//g///A//w//w///4+AAAAiB4//wf//wP/8P/8f//+HgAAAIgeP/4P//oD/6D//H///x4AAACAHj/8H//8A//B//h///8eAAAAhB4/+D//+EP/gf/4f///HgAAAIQ+P/B///jH/4H/8P///w8AAACCPj/A///wx/8R//D///9xAAAAQT4/g///4Uf+Ef/x////wwAAAED+Pgf//+PH/jH/4f///wQAAAAgP/AP///Dh/xx/+P///4YAAAAEAAAP///x4/4U//D///8MPAAAAwAAP///4+P+OP/x///+GMMAAADAAf///+PD/Dj/4f///DsAgAAAPD/////Hw/x4/+P///h0AEAAAAfP////x8f4eP/D///wpDwgAAAHj////4/H+Pn/w///4ehGAAAAB4////+Lh/jx/8f//8PIghAAAAeH////Do/x0f+H///DyIEQAAAHh////x8P8eH+h///h8iBEAAAB8f///0fH/Hj/4///w+IghAAAAPH////Hhfx4/8P//4fiEYgAAADx////xYf8Uf/D//8P4g4IAAAA8P///8UP/GH/w//+D8MAEAAAAPj////CH/wD/8P//B/HgCAAAAB4////wD/8B//j//g/x/DAAAAAeH///+B//g//o//wf4eOAAAAAHx////w/////6H/4P+PgAAAAAA8P//////////h/8H/DwAAAAAAPD//////////8P+D/w8AAAAAAD4///////////g+D/4fAAAAAAAeH//////////8AB/+HgAAAAAAHx///////////gB//D4AAAAAAA8P//////////////w8AAAAAAAPh//////////////4fAAAAAAAB4f/////////////+HgAAAAAAAfD//////////////D4AAAAAAAD4f/////////////h8AAAAAAAA+H/////////////wfAAAAAAAAHw/////////////8PgAAAAAAAA+H////////////+HwAAAAAAAAPg/////////////D8AAAAAAAAB8H////////////g+AAAAAAAAAPg////////////wfAAAAAAAAAD8H///////////4PgAAAAAAAAAfg///////////8H4AAAAAAAAAD8H//////////+D8AAAAAAAAAAfg///////////B+AAAAAAAAAAD8H//////////g/AAAAAAAAAAAfgf/////////gfgAAAAAAAAAAD8D/////////wPwAAAAAAAAAAAfgP////////wP4AAAAAAAAAAAD+B////////4H8AAAAAAAAAAAAfwH///////4D+AAAAAAAAAAAAD/Af//////4D+AAAAAAAAAAAAAP4B//////wD/AAAAAAAAAAAAAB/gD/////wB/gAAAAAAAAAAAAAH+AH////gB/gAAAAAAAAAAAAAA/4AH//+AB/wAAAAAAAAAAAAAAD/wAAAAAD/wAAAAAAAAAAAAAAAP/AAAAAH/wAAAAAAAAAAAAAAAA//AAAAP/wAAAAAAAAAAAAAAAAD//gAB//wAAAAAAAAAAAAAAAAAP//////wAAAAAAAAAAAAAAAAAAf/////gAAAAAAAAA"};
-var S={items:[],tx:[],holds:[],no:0,set:{name:"manici",tag:"Food & Drinks",addr:"",foot:"Terima kasih ya!",w:32,tax:0}},
+var S={items:[],tx:[],holds:[],no:0,set:{name:"manici",tag:"Food & Drinks",addr:"",foot:"Terima kasih ya!",w:32,tax:0,pm:"rawbt"}},
 cart=[],V="k",Q="",cat="",dd=0,pay=0,paying=false,edit=null,dimg="",dev=null,ch=null,stream=null,scanTimer=null,scanOn=false,lastCode="",lastT=0;
 try{var raw=localStorage.getItem("kasir_v1");if(raw){var o=JSON.parse(raw);S.items=o.items||[];S.tx=o.tx||[];S.holds=o.holds||[];S.no=o.no||0;Object.assign(S.set,o.set||{})}}catch(e){}
 function save(){try{localStorage.setItem("kasir_v1",JSON.stringify(S))}catch(e){toast("Penuh, backup dulu")}}
@@ -197,7 +219,7 @@ return '<section class="c"><h3>Toko</h3><p class="hint">Nama toko tampil di head
 +'<div class="fld">'+ic('msg')+'<input id="sf" placeholder="Pesan di struk" value="'+esc(s.foot)+'"></div>'
 +'<div class="row"><div class="fld">'+ic('pct')+'<input id="st" type="number" inputmode="decimal" placeholder="Pajak %" value="'+(s.tax||"")+'"></div><div class="fld">'+ic('receipt')+'<select id="sw"><option value="32"'+(s.w==32?" selected":"")+'>Struk 58mm</option><option value="48"'+(s.w==48?" selected":"")+'>Struk 80mm</option></select></div></div>'
 +'<button id="ss" class="g" style="width:100%">'+ic('check')+' Simpan Pengaturan</button></section>'
-+'<section class="c"><h3>Printer Bluetooth</h3><p class="hint">Struk dikirim via Bluetooth ke printer thermal. Hubungkan dulu, lalu tes cetak.</p><div class="row"><button class="o" id="bt" title="Hubungkan printer">'+ic('bt')+' Hubungkan</button><button class="o" id="tp" title="Tes cetak">'+ic('print')+' Tes Cetak</button></div><div class="mu" style="text-align:center">'+(ch&&dev&&dev.gatt.connected?"● "+esc(dev.name||"printer")+" terhubung":"○ Printer belum terhubung")+'</div></section>'
++'<section class="c"><h3>Printer Bluetooth</h3><p class="hint">RawBT = untuk printer Bluetooth biasa (mis. iware) - pilih RawBT di dialog print. BLE = sambung langsung ke printer Bluetooth BLE.</p><div class="row"><button class="pm ' + ((s.pm||"rawbt")==="rawbt"?"g":"o") + '" data-pm="rawbt">RawBT</button><button class="pm ' + ((s.pm||"rawbt")==="ble"?"g":"o") + '" data-pm="ble">Bluetooth BLE</button></div><div class="row"><button class="o" id="bt" title="Hubungkan printer">'+ic('bt')+' Hubungkan</button><button class="o" id="tp" title="Tes cetak">'+ic('print')+' Tes Cetak</button></div><div class="mu" style="text-align:center">'+(ch&&dev&&dev.gatt.connected?"● "+esc(dev.name||"printer")+" terhubung":"○ Printer belum terhubung")+'</div></section>'
 +'<section class="c"><h3>Data</h3><p class="hint">Backup semua produk, transaksi, dan pengaturan ke file JSON.</p><div class="row"><button class="o" id="ex" title="Backup">'+ic('down')+' Backup</button><button class="o" id="im" title="Restore">'+ic('up')+' Restore</button></div><input type="file" id="fi" accept=".json" hidden></section>'}
 
 function renderHeader(){
@@ -236,6 +258,7 @@ function bind(){
 var q=$("#q");if(q)q.oninput=()=>{Q=q.value;var p=q.selectionStart;render();var n=$("#q");n.focus();n.setSelectionRange(p,p)};
 on("#newi",()=>go("p"));on("#scanGo",()=>go("x"));on("#bar",()=>{var c=$("#co");if(c)c.scrollIntoView({behavior:"smooth"})});
 all("[data-ct]",b=>b.onclick=()=>{cat=b.dataset.ct;render()});
+all("[data-pm]",b=>b.onclick=()=>{S.set.pm=b.dataset.pm;save();render();toast("Mode cetak: "+(b.dataset.pm==="rawbt"?"RawBT":"Bluetooth BLE"))});
 all("[data-a]",b=>b.onclick=()=>{var i=S.items.find(x=>x.id==b.dataset.a);if(i)addCart(i)});
 all("[data-pl]",b=>b.onclick=()=>{var c=cart[b.dataset.pl],i=S.items.find(x=>x.id==c.id);if(i&&stk(i)&&c.q+1>i.s)return toast("Stok habis");c.q++;render()});
 all("[data-m]",b=>b.onclick=()=>{var c=cart[b.dataset.m];if(--c.q<1)cart.splice(b.dataset.m,1);render()});
@@ -265,7 +288,7 @@ all("[data-e]",b=>b.onclick=()=>{edit=+b.dataset.e;dimg="";V="p";render();window
 all("[data-r]",b=>b.onclick=()=>out(S.tx.find(t=>t.no==b.dataset.r)));
 all("[data-x]",b=>b.onclick=()=>{if(confirm("Hapus transaksi?")){S.tx=S.tx.filter(t=>t.no!=b.dataset.x);save();render()}});
 on("#csv",()=>{var r=["no,waktu,item,diskon,pajak,total,bayar,kembali"];S.tx.forEach(t=>r.push([t.no,new Date(t.t).toLocaleString("id-ID"),'"'+t.items.map(i=>i.q+"x "+i.n).join("; ").replace(/"/g,"'")+'"',t.disc,t.tax||0,t.total,t.pay,t.chg].join(",")));dl("transaksi.csv",r.join("\n"),"text/csv")});
-on("#ss",()=>{S.set={name:$("#sn").value,tag:$("#sg").value,addr:$("#sa").value,foot:$("#sf").value,w:+$("#sw").value,tax:+$("#st").value||0};save();toast("Tersimpan");render()});
+on("#ss",()=>{S.set={name:$("#sn").value,tag:$("#sg").value,addr:$("#sa").value,foot:$("#sf").value,w:+$("#sw").value,tax:+$("#st").value||0,pm:S.set.pm||"rawbt"};save();toast("Tersimpan");render()});
 on("#bt",()=>conn().then(()=>{toast("Printer nyambung");render()}).catch(e=>toast(e.message)));
 on("#tp",()=>out({no:0,t:Date.now(),items:[{n:"Tes cetak",p:1000,q:1}],disc:0,tax:0,total:1000,pay:1000,chg:0}));
 on("#ex",()=>dl("backup-kasir.json",JSON.stringify(S),"application/json"));on("#im",()=>$("#fi").click());
@@ -330,7 +353,31 @@ return new Uint8Array(b)}
 
 /* Struk HANYA via Bluetooth (printer thermal) — tanpa dialog print browser,
    karena aplikasi ini nantinya jadi mobile app. */
+function rcptHTML(t){
+var f=n=>Math.round(n).toLocaleString("id-ID");
+var d=new Date(t.t);
+var items=t.items.map(i=>'<div class="item"><div class="n">'+esc(i.n)+'</div><div class="d"><span>'+i.q+' x '+f(i.p)+'</span><span>'+f(i.p*i.q)+'</span></div></div>').join("");
+return '<div class="rc"><div class="logo"><img src="'+LOGO+'" alt="logo"></div>'
++'<div class="name">'+esc(S.set.name)+'</div>'
++'<div class="tag">'+esc(S.set.tag||"")+'</div>'
++(S.set.addr?'<div class="addr">'+esc(S.set.addr)+'</div>':'')
++'<div class="div"></div>'
++'<div class="meta"><span>#'+t.no+'</span><span>'+d.toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"})+' &middot; '+d.toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"})+'</span></div>'
++'<div class="div"></div>'+items+'<div class="div"></div>'
++(t.disc?'<div class="row"><span>Diskon</span><span>-'+f(t.disc)+'</span></div>':'')
++'<div class="tot"><span>TOTAL</span><b>Rp'+f(t.total)+'</b></div>'
++'<div class="row" style="margin-top:8px"><span>Bayar</span><span>Rp'+f(t.pay)+'</span></div>'
++'<div class="row"><span>Kembali</span><span>Rp'+f(t.chg)+'</span></div>'
++'<div class="div"></div>'
++'<div class="foot"><i>'+esc(S.set.foot)+'</i></div></div>';
+}
 function out(t){
+if((S.set.pm||"rawbt")==="rawbt"){
+  $("#rcptHtml").innerHTML=rcptHTML(t);
+  toast("Pilih RawBT di dialog print");
+  setTimeout(()=>window.print(),300);
+  return;
+}
 sendBT(rcpt(t)).then(()=>toast("Terkirim ke printer")).catch(e=>toast("Gagal cetak: "+e.message))}
 
 async function conn(){
@@ -346,5 +393,6 @@ for(var i=0;i<u.length;i+=100){var p=u.slice(i,i+100);if(ch.properties.writeWith
 
 render();
 </script>
+<div id="rcptHtml"></div>
 </body>
 </html>
