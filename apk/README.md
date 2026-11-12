@@ -34,3 +34,4 @@ APK di-build otomatis oleh GitHub Actions setiap ada perubahan di folder
 - `android/` — project Android (Capacitor + plugin Bluetooth Serial).
 - `.github/scripts/generate-icons.py` — bikin ikon launcher + splash
   (hijau-emas MANICI) saat build, jadi tidak perlu file gambar di repo.
+  Script ini ada di repo, jadi workflow bisa menjalankannya langsung.
