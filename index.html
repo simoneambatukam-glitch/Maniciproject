@@ -419,12 +419,25 @@ function sendBTNATIVE(bytes){
 }
 function btListDevices(){
   if(!hasBTSerial()){ toast("Hanya tersedia di aplikasi (APK)."); return; }
-  window.bluetoothSerial.list(function(devs){
-    btDevs = devs || [];
-    if(!btDevs.length){ toast("Tidak ada printer yang di-pair. Pair dulu di Bluetooth HP."); return; }
-    render();
-    toast("Ketuk nama printer untuk memilih");
-  }, function(){ toast("Gagal membaca daftar Bluetooth."); });
+  var perms = (window.cordova && cordova.plugins && cordova.plugins.permissions) ? cordova.plugins.permissions : null;
+  function doList(){
+    window.bluetoothSerial.isEnabled(function(){
+      window.bluetoothSerial.list(function(devs){
+        btDevs = devs || [];
+        if(!btDevs.length){ toast("Tidak ada printer yang di-pair. Pair dulu di Bluetooth HP."); return; }
+        render();
+        toast("Ketuk nama printer untuk memilih");
+      }, function(){ toast("Gagal membaca daftar Bluetooth."); });
+    }, function(){
+      toast("Bluetooth HP mati. Nyalakan dulu Bluetooth-nya.");
+    });
+  }
+  if(perms){
+    perms.requestPermission(perms.BLUETOOTH_CONNECT, function(status){
+      if(status && status.hasPermission){ doList(); }
+      else { toast("Izin Bluetooth belum diberikan. Izinkan 'Perangkat di sekitar' di Pengaturan aplikasi."); }
+    }, function(){ toast("Gagal meminta izin Bluetooth."); });
+  } else { doList(); }
 }
 
 function out(t){
