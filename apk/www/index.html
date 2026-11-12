@@ -30,7 +30,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 input,select{width:100%;padding:11px 12px;border:1px solid var(--bd);border-radius:12px;background:var(--white);color:var(--ink);font:inherit;margin-bottom:8px;outline:none}
 input:focus,select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,162,39,.18)}
 /* ---- header ---- */
-header{background:linear-gradient(180deg,var(--green-800),var(--green-900));color:#fff;position:sticky;top:0;z-index:5;padding:10px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 6px 24px rgba(14,42,30,.35)}
+header{background:linear-gradient(180deg,var(--green-800),var(--green-900));color:#fff;position:sticky;top:0;z-index:5;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;display:flex;align-items:center;gap:10px;box-shadow:0 6px 24px rgba(14,42,30,.35)}
 .brand{display:flex;align-items:center;gap:10px;margin-right:auto;min-width:0}
 .logo{width:42px;height:42px;flex:none;border-radius:50%;background:#000;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px rgba(201,162,39,.45),0 4px 12px rgba(0,0,0,.4);overflow:hidden}
 .logo img{width:100%;height:100%;object-fit:cover;display:block}
