@@ -243,7 +243,7 @@ return '<section class="c"><h3>Toko</h3><p class="hint">Nama toko tampil di head
 +'<button id="ss" class="g" style="width:100%">'+ic('check')+' Simpan Pengaturan</button></section>'
 +'<section class="c"><h3>Printer Bluetooth</h3>' + (function(){ var ci = (typeof plogCrashInfo === "function") ? plogCrashInfo() : ""; return ci ? '<p class="hint" style="color:#b3261e;background:#fdecea;border:1px solid #f5c6c6;border-radius:10px;padding:10px">⚠️ ' + ci + '</p>' : ''; })() + '<p class="hint">RawBT = untuk printer Bluetooth biasa (mis. iware) - pilih RawBT di dialog print. BLE = sambung langsung ke printer Bluetooth BLE.</p><div class="row"><button class="pm ' + ((s.pm||"rawbt")==="rawbt"?"g":"o") + '" data-pm="rawbt">RawBT</button><button class="pm ' + ((s.pm||"rawbt")==="ble"?"g":"o") + '" data-pm="ble">Bluetooth BLE</button></div><div class="row"><button class="o" id="btPick" title="Pilih printer Bluetooth">'+ic('bt')+' Pilih Printer</button></div><div class="mu" style="text-align:center">'+(S.set.btMac?("Printer: "+esc(S.set.btMac)):"Belum ada printer dipilih")+'</div>'
 +(btDevs.length?'<div class="row" style="flex-wrap:wrap">'+btDevs.map(function(d){return '<button class="o" data-btmac="'+esc(d.address||d.id)+'">'+esc(d.name||d.address||d.id)+'</button>'}).join("")+'</div>':'')
-+'<div class="row"><button class="o" id="bt" title="Hubungkan printer">'+ic('bt')+' Hubungkan</button><button class="o" id="tp" title="Tes cetak">'+ic('print')+' Tes Cetak</button></div><div class="mu" style="text-align:center">'+(ch&&dev&&dev.gatt.connected?"● "+esc(dev.name||"printer")+" terhubung":"○ Printer belum terhubung")+'</div></section>'
++'<div class="row"><button class="o" id="bt" title="Hubungkan printer">'+ic('bt')+' Hubungkan</button><button class="o" id="tp" title="Tes cetak">'+ic('print')+' Tes Cetak</button></div><div class="mu" style="text-align:center">'+(ch&&dev&&dev.gatt.connected?"● "+esc(dev.name||"printer")+" terhubung":"○ Printer belum terhubung")+'</div><div class="row"><button class="o" id="plogShow" title="Lihat log print">Lihat Log Print</button><button class="o" id="plogCopy" title="Salin log print">Salin Log</button></div><textarea id="plogBox" readonly rows="6" style="width:100%;display:none;font-size:11px;margin-top:6px" placeholder="Belum ada log print."></textarea></section>'
 +'<section class="c"><h3>Data</h3><p class="hint">Backup semua produk, transaksi, dan pengaturan ke file JSON.</p><div class="row"><button class="o" id="ex" title="Backup">'+ic('down')+' Backup</button><button class="o" id="im" title="Restore">'+ic('up')+' Restore</button></div><input type="file" id="fi" accept=".json" hidden></section>'}
 
 function renderHeader(){
@@ -284,6 +284,8 @@ on("#newi",()=>go("p"));on("#scanGo",()=>go("x"));on("#bar",()=>{var c=$("#co");
 all("[data-ct]",b=>b.onclick=()=>{cat=b.dataset.ct;render()});
 all("[data-pm]",b=>b.onclick=()=>{S.set.pm=b.dataset.pm;save();render();toast("Mode cetak: "+(b.dataset.pm==="rawbt"?"RawBT":"Bluetooth BLE"))});
 on("#btPick",()=>{ btListDevices(); });
+on("#plogShow",()=>{ var b=$("#plogBox"); if(!b) return; if(b.style.display==="none"){ b.value=plogText(); b.style.display="block"; } else { b.style.display="none"; } });
+on("#plogCopy",()=>{ plogCopy(plogText()); });
 all("[data-btmac]",b=>b.onclick=()=>{ S.set.btMac=b.dataset.btmac; btDevs=[]; save(); render(); toast("Printer dipilih: "+b.dataset.btmac); });
 all("[data-a]",b=>b.onclick=()=>{var i=S.items.find(x=>x.id==b.dataset.a);if(i)addCart(i)});
 all("[data-pl]",b=>b.onclick=()=>{var c=cart[b.dataset.pl],i=S.items.find(x=>x.id==c.id);if(i&&stk(i)&&c.q+1>i.s)return toast("Stok habis");c.q++;render()});
@@ -398,85 +400,146 @@ return '<div class="rc"><div class="logo"><img src="'+LOGO+'" alt="logo"></div>'
 +'<div class="foot"><i>'+esc(S.set.foot)+'</i></div></div>';
 }
 // ===== NATIVE (APK Capacitor): cetak langsung ke printer Bluetooth Classic (SPP) =====
-// Tanpa RawBT, tanpa Web Bluetooth. Pakai plugin bluetooth-serial (Cordova).
+// Tanpa RawBT, tanpa Web Bluetooth. Pakai plugin Capacitor @fmesasc/capacitor-bluetooth-serial
+// (masih di-maintain, support Android 12+ / BLUETOOTH_CONNECT & BLUETOOTH_SCAN).
 // Printer iware (Bluetooth biasa) hanya bisa dijangkau lewat jalur ini.
+// Data dikirim sebagai array angka (byte mentah) supaya struk ESC/POS + logo raster
+// tidak rusak saat lewat bridge (bukan base64, bukan string UTF-8).
+// Semua operasi Bluetooth dibungkus try/catch: error tampil sebagai toast, app tidak crash.
 function isNative(){ try{ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }catch(e){ return !!window.Capacitor; } }
-function hasBTSerial(){ return typeof window.bluetoothSerial !== "undefined"; }
-var btDevs = []; // daftar perangkat paired (native)
-function btEnsure(){
+var _BT = null;
+function getBT(){
+  if(_BT) return _BT;
+  if(window.Capacitor && window.Capacitor.registerPlugin){
+    try{ _BT = window.Capacitor.registerPlugin("BluetoothSerial"); }catch(e){ _BT = null; }
+  }
+  return _BT;
+}
+function hasBT(){ return !!getBT(); }
+var btDevs = []; // daftar perangkat hasil scan (native)
+
+// --- Izin runtime BLUETOOTH_CONNECT / BLUETOOTH_SCAN (Android 12+) ---
+// Dicek + diminta DULU sebelum connect/write/scan. Kalau ditolak, lempar Error
+// berbahasa Indonesia (tampil sebagai toast), bukan crash.
+function btPerms(names){
   return new Promise(function(resolve, reject){
-    if(!hasBTSerial()) return reject(new Error("Plugin Bluetooth belum siap. Tutup lalu buka lagi aplikasinya."));
-    plog("btEnsure: cek isEnabled");
-    window.bluetoothSerial.isEnabled(function(){
-      plog("btEnsure: isEnabled OK, cek isConnected");
-      window.bluetoothSerial.isConnected(function(){ plog("btEnsure: sudah terhubung"); resolve(true); }, function(){
-        var mac = S.set.btMac;
-        if(!mac) return reject(new Error("Pilih printer dulu di Setting > Printer Bluetooth."));
-        plog("btEnsure: connect secure " + mac);
-        window.bluetoothSerial.connect(mac, function(){ plog("btEnsure: connect OK"); resolve(true); }, function(){
-          plog("btEnsure: connect gagal, coba insecure");
-          window.bluetoothSerial.connectInsecure(mac, function(){ plog("btEnsure: connectInsecure OK"); resolve(true); }, function(e2){
-            reject(new Error("Gagal sambung ke printer. Pastikan printer nyala & sudah di-pair di Bluetooth HP."));
-          });
-        });
-      });
-    }, function(){
-      plog("btEnsure: BT mati, minta enable");
-      window.bluetoothSerial.enable(function(){ btEnsure().then(resolve).catch(reject); }, function(){
-        reject(new Error("Nyalakan Bluetooth dulu."));
-      });
-    });
+    var perms = (window.cordova && cordova.plugins && cordova.plugins.permissions) ? cordova.plugins.permissions : null;
+    if(!perms) return resolve(true); // tanpa plugin izin, andalkan cek internal plugin BT
+    var list = names.map(function(n){ return perms[n]; }).filter(Boolean);
+    if(!list.length) return resolve(true);
+    try{
+      perms.requestPermissions(list, function(st){
+        if(st && st.hasPermission) return resolve(true);
+        reject(new Error("Izin Bluetooth belum diberikan. Izinkan 'Perangkat di sekitar' di Pengaturan aplikasi."));
+      }, function(){ reject(new Error("Gagal meminta izin Bluetooth.")); });
+    }catch(e){ reject(new Error("Gagal cek izin Bluetooth: " + (e && e.message ? e.message : e))); }
   });
 }
-function u8ToB64(u8){var s="";for(var i=0;i<u8.length;i++)s+=String.fromCharCode(u8[i]);return btoa(s);}
-function btWriteB64(b64, ok, err){
-  // Kirim sebagai base64 string via cordova.exec langsung (bukan ArrayBuffer),
-  // supaya data tidak rusak saat lewat bridge Capacitor.
-  if(window.cordova && cordova.exec){ cordova.exec(ok, err, "BluetoothSerial", "write", [b64]); }
-  else if(window.bluetoothSerial){ window.bluetoothSerial.write(b64, ok, err); }
-  else { err(new Error("Plugin Bluetooth belum siap.")); }
+function btPermConnect(){ return btPerms(["BLUETOOTH_CONNECT"]); }
+function btPermScan(){ return btPerms(["BLUETOOTH_SCAN","BLUETOOTH_CONNECT"]); }
+
+async function btEnsure(){
+  var BT = getBT();
+  if(!BT) throw new Error("Plugin Bluetooth belum siap. Tutup lalu buka lagi aplikasinya.");
+  var mac = S.set.btMac;
+  if(!mac) throw new Error("Pilih printer dulu di Setting > Printer Bluetooth.");
+  try{
+    await btPermConnect(); // izin dulu, baru panggil API Bluetooth
+    plog("btEnsure: cek isEnabled");
+    var st = await BT.isEnabled();
+    if(!st || !st.enabled){
+      plog("btEnsure: BT mati, minta enable");
+      st = await BT.enable();
+      if(!st || !st.enabled) throw new Error("Nyalakan Bluetooth dulu.");
+    }
+    plog("btEnsure: isEnabled OK, cek isConnected");
+    var c = await BT.isConnected({address: mac});
+    if(c && c.connected){ plog("btEnsure: sudah terhubung"); return true; }
+    plog("btEnsure: connect secure " + mac);
+    try{
+      await BT.connect({address: mac});
+      plog("btEnsure: connect OK"); return true;
+    }catch(e1){
+      plog("btEnsure: connect gagal, coba insecure");
+      try{
+        await BT.connectInsecure({address: mac});
+        plog("btEnsure: connectInsecure OK"); return true;
+      }catch(e2){
+        throw new Error("Gagal sambung ke printer. Pastikan printer nyala & sudah di-pair di Bluetooth HP.");
+      }
+    }
+  }catch(e){
+    if(e && e.message) throw e;
+    throw new Error("Gagal sambung ke printer: " + String(e));
+  }
 }
-function sendBTNATIVE(bytes){
-  plog("sendBTNATIVE: mulai, rcpt " + bytes.length + " byte");
-  return btEnsure().then(function(){
+
+async function sendBTNATIVE(bytes){
+  var BT = getBT();
+  if(!BT) throw new Error("Plugin Bluetooth belum siap. Tutup lalu buka lagi aplikasinya.");
+  var mac = S.set.btMac;
+  if(!mac) throw new Error("Pilih printer dulu di Setting > Printer Bluetooth.");
+  try{
+    await btPermConnect(); // izin dulu, baru tulis
+    plog("sendBTNATIVE: mulai, rcpt " + bytes.length + " byte");
+    await btEnsure();
     var u = new Uint8Array([27,64].concat(Array.from(bytes),[10,10,10,10]));
     plog("sendBTNATIVE: total " + u.length + " byte, tulis per 512");
-    return new Promise(function(resolve, reject){
-      var i = 0, c = 0;
-      (function next(){
-        if(i >= u.length){ plog("sendBTNATIVE: selesai semua chunk"); plogDone(); return resolve(); }
-        var chunk = u.slice(i, i+512);
-        i += chunk.length; c++;
-        plog("sendBTNATIVE: tulis chunk " + c + " (" + chunk.length + " byte)");
-        btWriteB64(u8ToB64(chunk), function(){ setTimeout(next, 30); }, function(e){
-          plogDone();
-          reject(new Error("Gagal kirim ke printer."));
-        });
-      })();
-    });
-  });
-}
-function btListDevices(){
-  if(!hasBTSerial()){ toast("Hanya tersedia di aplikasi (APK)."); return; }
-  var perms = (window.cordova && cordova.plugins && cordova.plugins.permissions) ? cordova.plugins.permissions : null;
-  function doList(){
-    window.bluetoothSerial.isEnabled(function(){
-      window.bluetoothSerial.list(function(devs){
-        btDevs = devs || [];
-        if(!btDevs.length){ toast("Tidak ada printer yang di-pair. Pair dulu di Bluetooth HP."); return; }
-        render();
-        toast("Ketuk nama printer untuk memilih");
-      }, function(){ toast("Gagal membaca daftar Bluetooth."); });
-    }, function(){
-      toast("Bluetooth HP mati. Nyalakan dulu Bluetooth-nya.");
-    });
+    var i = 0, c = 0;
+    while(i < u.length){
+      var chunk = u.slice(i, i+512);
+      i += chunk.length; c++;
+      plog("sendBTNATIVE: tulis chunk " + c + " (" + chunk.length + " byte)");
+      await BT.write({address: mac, value: Array.from(chunk)}); // array angka = byte mentah
+      await new Promise(function(r){ setTimeout(r, 30); });
+    }
+    plog("sendBTNATIVE: selesai semua chunk"); plogDone();
+  }catch(e){
+    plogDone();
+    if(e && e.message) throw e;
+    throw new Error("Gagal kirim ke printer: " + String(e));
   }
-  if(perms){
-    perms.requestPermission(perms.BLUETOOTH_CONNECT, function(status){
-      if(status && status.hasPermission){ doList(); }
-      else { toast("Izin Bluetooth belum diberikan. Izinkan 'Perangkat di sekitar' di Pengaturan aplikasi."); }
-    }, function(){ toast("Gagal meminta izin Bluetooth."); });
-  } else { doList(); }
+}
+
+async function btListDevices(){
+  var BT = getBT();
+  if(!BT){ toast("Hanya tersedia di aplikasi (APK)."); return; }
+  try{
+    await btPermScan(); // izin SCAN (+ CONNECT) dulu
+    toast("Mencari printer... (pastikan printer nyala)");
+    plog("btListDevices: scan mulai");
+    var r = await BT.scan();
+    var devs = (r && r.devices) ? r.devices : [];
+    btDevs = devs.filter(function(d){ return d && (d.address || d.id); });
+    plog("btListDevices: ketemu " + btDevs.length + " perangkat");
+    if(!btDevs.length){ toast("Tidak ada printer ketemu. Pastikan printer nyala & Bluetooth HP aktif."); render(); return; }
+    render();
+    toast("Ketuk nama printer untuk memilih");
+  }catch(e){
+    toast("Gagal cari printer: " + (e && e.message ? e.message : e));
+  }
+}
+
+// --- Lihat / Salin Log Print (localStorage kasir_print_log) ---
+function plogText(){
+  try{
+    var log = JSON.parse(localStorage.getItem("kasir_print_log") || "[]");
+    if(!log.length) return "Belum ada log print.";
+    return log.map(function(x){ return new Date(x.t).toLocaleTimeString("id-ID") + "  " + x.s; }).join("\n");
+  }catch(e){ return "Log tidak bisa dibaca."; }
+}
+function plogCopy(txt){
+  function done(){ toast("Log disalin"); }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(done).catch(function(){ plogCopyFallback(txt); done(); });
+  } else { plogCopyFallback(txt); done(); }
+}
+function plogCopyFallback(txt){
+  var ta = document.createElement("textarea");
+  ta.value = txt; ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); }catch(e){}
+  document.body.removeChild(ta);
 }
 
 function out(t){
