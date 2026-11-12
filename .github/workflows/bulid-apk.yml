@@ -38,7 +38,7 @@ jobs:
           echo "$HOME/Android/Sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "$HOME/Android/Sdk/platform-tools" >> $GITHUB_PATH
           yes | $HOME/Android/Sdk/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null
-          $HOME/Android/Sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          $HOME/Android/Sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "platforms;android-36" "build-tools;34.0.0" "build-tools;36.0.0"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
