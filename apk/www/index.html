@@ -168,6 +168,28 @@ try{var raw=localStorage.getItem("kasir_v1");if(raw){var o=JSON.parse(raw);S.ite
 function save(){try{localStorage.setItem("kasir_v1",JSON.stringify(S))}catch(e){toast("Penuh, backup dulu")}}
 var $=s=>document.querySelector(s),all=(s,f)=>document.querySelectorAll(s).forEach(f),on=(s,f)=>{var e=$(s);if(e)e.onclick=f},rp=n=>"Rp"+Math.round(n).toLocaleString("id-ID");
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+/* --- Diagnostik crash print: catat tiap langkah ke localStorage (sinkron) --- */
+function plog(step){
+  try{
+    var log = JSON.parse(localStorage.getItem("kasir_print_log") || "[]");
+    log.push({t: Date.now(), s: step});
+    if(log.length > 40) log = log.slice(-40);
+    localStorage.setItem("kasir_print_log", JSON.stringify(log));
+    localStorage.setItem("kasir_print_active", "1");
+  }catch(e){}
+}
+function plogDone(){ try{ localStorage.setItem("kasir_print_active", "0"); }catch(e){} }
+function plogCrashInfo(){
+  try{
+    var active = localStorage.getItem("kasir_print_active") === "1";
+    var log = JSON.parse(localStorage.getItem("kasir_print_log") || "[]");
+    if(active && log.length){
+      var last = log.slice(-6).map(function(x){ return new Date(x.t).toLocaleTimeString("id-ID") + " " + x.s; }).join(" | ");
+      return "Aplikasi terakhir mati saat print. Langkah terakhir: " + last;
+    }
+  }catch(e){}
+  return "";
+}
 function toast(m){var t=$("#t");t.textContent=m;t.style.display="block";clearTimeout(t._h);t._h=setTimeout(()=>t.style.display="none",2500)}
 function go(v){V=v;paying=false;render();window.scrollTo(0,0)}
 function calc(){var sub=cart.reduce((a,c)=>a+c.p*c.q,0),ds=Math.round(sub*dd/100),tx=Math.round((sub-ds)*(S.set.tax||0)/100);return{sub:sub,ds:ds,tx:tx,tot:sub-ds+tx}}
@@ -219,7 +241,7 @@ return '<section class="c"><h3>Toko</h3><p class="hint">Nama toko tampil di head
 +'<div class="fld">'+ic('msg')+'<input id="sf" placeholder="Pesan di struk" value="'+esc(s.foot)+'"></div>'
 +'<div class="row"><div class="fld">'+ic('pct')+'<input id="st" type="number" inputmode="decimal" placeholder="Pajak %" value="'+(s.tax||"")+'"></div><div class="fld">'+ic('receipt')+'<select id="sw"><option value="32"'+(s.w==32?" selected":"")+'>Struk 58mm</option><option value="48"'+(s.w==48?" selected":"")+'>Struk 80mm</option></select></div></div>'
 +'<button id="ss" class="g" style="width:100%">'+ic('check')+' Simpan Pengaturan</button></section>'
-+'<section class="c"><h3>Printer Bluetooth</h3><p class="hint">RawBT = untuk printer Bluetooth biasa (mis. iware) - pilih RawBT di dialog print. BLE = sambung langsung ke printer Bluetooth BLE.</p><div class="row"><button class="pm ' + ((s.pm||"rawbt")==="rawbt"?"g":"o") + '" data-pm="rawbt">RawBT</button><button class="pm ' + ((s.pm||"rawbt")==="ble"?"g":"o") + '" data-pm="ble">Bluetooth BLE</button></div><div class="row"><button class="o" id="btPick" title="Pilih printer Bluetooth">'+ic('bt')+' Pilih Printer</button></div><div class="mu" style="text-align:center">'+(S.set.btMac?("Printer: "+esc(S.set.btMac)):"Belum ada printer dipilih")+'</div>'
++'<section class="c"><h3>Printer Bluetooth</h3>' + (function(){ var ci = (typeof plogCrashInfo === "function") ? plogCrashInfo() : ""; return ci ? '<p class="hint" style="color:#b3261e;background:#fdecea;border:1px solid #f5c6c6;border-radius:10px;padding:10px">⚠️ ' + ci + '</p>' : ''; })() + '<p class="hint">RawBT = untuk printer Bluetooth biasa (mis. iware) - pilih RawBT di dialog print. BLE = sambung langsung ke printer Bluetooth BLE.</p><div class="row"><button class="pm ' + ((s.pm||"rawbt")==="rawbt"?"g":"o") + '" data-pm="rawbt">RawBT</button><button class="pm ' + ((s.pm||"rawbt")==="ble"?"g":"o") + '" data-pm="ble">Bluetooth BLE</button></div><div class="row"><button class="o" id="btPick" title="Pilih printer Bluetooth">'+ic('bt')+' Pilih Printer</button></div><div class="mu" style="text-align:center">'+(S.set.btMac?("Printer: "+esc(S.set.btMac)):"Belum ada printer dipilih")+'</div>'
 +(btDevs.length?'<div class="row" style="flex-wrap:wrap">'+btDevs.map(function(d){return '<button class="o" data-btmac="'+esc(d.address||d.id)+'">'+esc(d.name||d.address||d.id)+'</button>'}).join("")+'</div>':'')
 +'<div class="row"><button class="o" id="bt" title="Hubungkan printer">'+ic('bt')+' Hubungkan</button><button class="o" id="tp" title="Tes cetak">'+ic('print')+' Tes Cetak</button></div><div class="mu" style="text-align:center">'+(ch&&dev&&dev.gatt.connected?"● "+esc(dev.name||"printer")+" terhubung":"○ Printer belum terhubung")+'</div></section>'
 +'<section class="c"><h3>Data</h3><p class="hint">Backup semua produk, transaksi, dan pengaturan ke file JSON.</p><div class="row"><button class="o" id="ex" title="Backup">'+ic('down')+' Backup</button><button class="o" id="im" title="Restore">'+ic('up')+' Restore</button></div><input type="file" id="fi" accept=".json" hidden></section>'}
@@ -384,17 +406,22 @@ var btDevs = []; // daftar perangkat paired (native)
 function btEnsure(){
   return new Promise(function(resolve, reject){
     if(!hasBTSerial()) return reject(new Error("Plugin Bluetooth belum siap. Tutup lalu buka lagi aplikasinya."));
+    plog("btEnsure: cek isEnabled");
     window.bluetoothSerial.isEnabled(function(){
-      window.bluetoothSerial.isConnected(function(){ resolve(true); }, function(){
+      plog("btEnsure: isEnabled OK, cek isConnected");
+      window.bluetoothSerial.isConnected(function(){ plog("btEnsure: sudah terhubung"); resolve(true); }, function(){
         var mac = S.set.btMac;
         if(!mac) return reject(new Error("Pilih printer dulu di Setting > Printer Bluetooth."));
-        window.bluetoothSerial.connect(mac, function(){ resolve(true); }, function(){
-          window.bluetoothSerial.connectInsecure(mac, function(){ resolve(true); }, function(e2){
+        plog("btEnsure: connect secure " + mac);
+        window.bluetoothSerial.connect(mac, function(){ plog("btEnsure: connect OK"); resolve(true); }, function(){
+          plog("btEnsure: connect gagal, coba insecure");
+          window.bluetoothSerial.connectInsecure(mac, function(){ plog("btEnsure: connectInsecure OK"); resolve(true); }, function(e2){
             reject(new Error("Gagal sambung ke printer. Pastikan printer nyala & sudah di-pair di Bluetooth HP."));
           });
         });
       });
     }, function(){
+      plog("btEnsure: BT mati, minta enable");
       window.bluetoothSerial.enable(function(){ btEnsure().then(resolve).catch(reject); }, function(){
         reject(new Error("Nyalakan Bluetooth dulu."));
       });
@@ -410,15 +437,19 @@ function btWriteB64(b64, ok, err){
   else { err(new Error("Plugin Bluetooth belum siap.")); }
 }
 function sendBTNATIVE(bytes){
+  plog("sendBTNATIVE: mulai, rcpt " + bytes.length + " byte");
   return btEnsure().then(function(){
     var u = new Uint8Array([27,64].concat(Array.from(bytes),[10,10,10,10]));
+    plog("sendBTNATIVE: total " + u.length + " byte, tulis per 512");
     return new Promise(function(resolve, reject){
-      var i = 0;
+      var i = 0, c = 0;
       (function next(){
-        if(i >= u.length) return resolve();
+        if(i >= u.length){ plog("sendBTNATIVE: selesai semua chunk"); plogDone(); return resolve(); }
         var chunk = u.slice(i, i+512);
-        i += chunk.length;
+        i += chunk.length; c++;
+        plog("sendBTNATIVE: tulis chunk " + c + " (" + chunk.length + " byte)");
         btWriteB64(u8ToB64(chunk), function(){ setTimeout(next, 30); }, function(e){
+          plogDone();
           reject(new Error("Gagal kirim ke printer."));
         });
       })();
@@ -450,7 +481,11 @@ function btListDevices(){
 
 function out(t){
 if(isNative()){
-  sendBTNATIVE(rcpt(t)).then(function(){ toast("Terkirim ke printer"); }).catch(function(e){ toast("Gagal cetak: "+e.message); });
+  plog("out: Tes/Bayar cetak, buat rcpt");
+  var rb;
+  try{ rb = rcpt(t); plog("out: rcpt jadi " + rb.length + " byte"); }
+  catch(e){ plogDone(); toast("Gagal cetak: " + e.message); return; }
+  sendBTNATIVE(rb).then(function(){ toast("Terkirim ke printer"); }).catch(function(e){ plogDone(); toast("Gagal cetak: "+e.message); });
   return;
 }
 if((S.set.pm||"rawbt")==="rawbt"){

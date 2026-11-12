@@ -368,12 +368,17 @@ public class BluetoothSerialService {
             mAdapter.cancelDiscovery();
 
             // Make a connection to the BluetoothSocket
+            if (mmSocket == null) {
+                Log.e(TAG, "ConnectThread: socket null, batal sambung (bukan crash).");
+                connectionFailed();
+                return;
+            }
             try {
                 // This is a blocking call and will only return on a successful connection or an exception
                 Log.i(TAG,"Connecting to socket...");
                 mmSocket.connect();
                 Log.i(TAG,"Connected");
-            } catch (IOException e) {
+            } catch (Throwable e) {
                 Log.e(TAG, e.toString());
 
                 // Some 4.1 devices have problems, try an alternative way to connect
@@ -381,6 +386,7 @@ public class BluetoothSerialService {
                 try {
                     Log.i(TAG,"Trying fallback...");
                     mmSocket = (BluetoothSocket) mmDevice.getClass().getMethod("createRfcommSocket", new Class[] {int.class}).invoke(mmDevice,1);
+                    if (mmSocket == null) { Log.e(TAG, "Fallback socket null."); connectionFailed(); return; }
                     mmSocket.connect();
                     Log.i(TAG,"Connected");
                 } catch (Exception e2) {
