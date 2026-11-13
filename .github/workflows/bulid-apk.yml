@@ -60,6 +60,11 @@ jobs:
           pip install pillow -q
           python3 .github/scripts/generate-icons.py
 
+      - name: Restore fixed debug keystore
+        run: |
+          mkdir -p ~/.android
+          if [ -f debug.keystore.b64 ]; then base64 -d debug.keystore.b64 > ~/.android/debug.keystore && echo "fixed debug keystore restored"; else echo "no fixed keystore in repo, Gradle will generate one"; fi
+
       - name: Build debug APK
         working-directory: apk/android
         run: gradle :app:assembleDebug --no-daemon
@@ -70,4 +75,3 @@ jobs:
           name: kasir-pos-debug
           path: apk/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-
