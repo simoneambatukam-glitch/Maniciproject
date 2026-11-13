@@ -326,7 +326,7 @@ return '<section class="c"><h3>Toko</h3><p class="hint">Nama toko tampil di head
 +'<div class="row"><div class="fld"><input id="prf" type="date" value="'+promoDraft.from+'"></div><div class="fld"><input id="prt" type="date" value="'+promoDraft.to+'"></div></div>'
 +'<div class="row"><div class="fld"><select id="prty" style="margin:0"><option value="pct"'+(promoDraft.type==="pct"?" selected":"")+'>Persen (%)</option><option value="nom"'+(promoDraft.type==="nom"?" selected":"")+'>Nominal (Rp)</option></select></div><div class="fld">'+ic('cash')+'<input id="prv" type="number" inputmode="numeric" placeholder="Nilai diskon" value="'+promoDraft.val+'"></div></div>'
 +'<div class="row"><label class="mu" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pra" style="width:auto;margin:0"'+(promoDraft.active?" checked":"")+'> Aktif</label><button class="g grow" id="prSave">'+ic('check')+' '+(editPromo?"Simpan Perubahan":"Tambah Promo")+'</button>'+(editPromo?'<button class="o sq" id="prCancel">'+ic('x')+'</button>':'')+'</div></section>'
-+'<section class="c"><h3>Data</h3><p class="hint">Backup semua produk, transaksi, dan pengaturan ke file JSON.</p><div class="row"><button class="o" id="ex" title="Backup">'+ic('down')+' Backup</button><button class="o" id="im" title="Restore">'+ic('up')+' Restore</button></div><input type="file" id="fi" accept=".json" hidden></section>'}
++'<section class="c"><h3>Data</h3><p class="hint">Backup menyimpan SEMUA data (produk, transaksi, promo, pengaturan) ke file JSON. Simpan file-nya baik-baik — kalau HP ganti atau aplikasi dihapus, Restore file itu buat balikin datanya.</p><div class="row"><button class="o" id="ex" title="Backup">'+ic('down')+' Backup</button><button class="o" id="im" title="Restore">'+ic('up')+' Restore</button></div><input type="file" id="fi" accept=".json" hidden></section>'}
 
 function pickModal(){
 var i=pick.i;
@@ -466,7 +466,22 @@ var vs=[];document.querySelectorAll(".vn").forEach(function(inp,ix){var pr=docum
 var it={id:e?e.id:Date.now(),n:n,p:+pr,c:$("#pc").value.trim(),s:st===""?"":+st,b:b,img:dimg||(e&&e.img)||"",v:vs.length?vs:undefined};
 if(e)S.items[S.items.indexOf(e)]=it;else S.items.push(it);edit=null;dimg="";save();toast("Tersimpan");render()}
 
-function dl(n,c,m){var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([c],{type:m}));a.download=n;a.click()}
+/* Unduh file: di APK (WebView Android) klik anchor blob TIDAK jalan — tidak ada
+   download manager. Jadi di APK pakai share sheet Android (navigator.share):
+   file bisa disimpan ke Drive / Files / WhatsApp. Di browser biasa tetap
+   pakai download anchor. Dipakai Backup JSON dan laporan CSV. */
+function dl(n,c,m){
+  var blob=new Blob([c],{type:m}), file=null;
+  try{ file=new File([blob],n,{type:m}); }catch(e){}
+  if(file && navigator.canShare && navigator.canShare({files:[file]})){
+    navigator.share({files:[file],title:n}).then(function(){toast("Backup dibagikan — simpan ke Drive / Files / WhatsApp")}).catch(function(e){
+      if(e && e.name!=="AbortError") dlAnchor(n,blob);
+    });
+    return;
+  }
+  dlAnchor(n,blob);
+}
+function dlAnchor(n,blob){var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=n;document.body.appendChild(a);a.click();a.remove();toast("File diunduh: "+n)}
 function checkout(pr){
 if(!cart.length)return toast("Keranjang kosong");
 var K=calc();if(pay&&pay<K.tot)return toast("Uang kurang");var py=pay||K.tot;S.no++;
