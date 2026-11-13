@@ -342,7 +342,14 @@ return '<section class="c"><h3>Toko</h3><p class="hint">Nama toko tampil di head
 +'<div class="row"><div class="fld"><input id="prf" type="date" value="'+promoDraft.from+'"></div><div class="fld"><input id="prt" type="date" value="'+promoDraft.to+'"></div></div>'
 +'<div class="row"><div class="fld"><select id="prty" style="margin:0"><option value="pct"'+(promoDraft.type==="pct"?" selected":"")+'>Persen (%)</option><option value="nom"'+(promoDraft.type==="nom"?" selected":"")+'>Nominal (Rp)</option></select></div><div class="fld">'+ic('cash')+'<input id="prv" type="number" inputmode="numeric" placeholder="Nilai diskon" value="'+promoDraft.val+'"></div></div>'
 +'<div class="row"><label class="mu" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pra" style="width:auto;margin:0"'+(promoDraft.active?" checked":"")+'> Aktif</label><button class="g grow" id="prSave">'+ic('check')+' '+(editPromo?"Simpan Perubahan":"Tambah Promo")+'</button>'+(editPromo?'<button class="o sq" id="prCancel">'+ic('x')+'</button>':'')+'</div></section>'
-+'<section class="c"><h3>Data</h3><p class="hint">Backup menyimpan SEMUA data (produk, transaksi, promo, pengaturan) ke file JSON. Simpan file-nya baik-baik — kalau HP ganti atau aplikasi dihapus, Restore file itu buat balikin datanya.</p><div class="row"><button class="o" id="ex" title="Backup">'+ic('down')+' Backup</button><button class="o" id="im" title="Restore">'+ic('up')+' Restore</button></div><input type="file" id="fi" accept=".json" hidden></section>'}
++'<section class="c"><h3>Data</h3><p class="hint">Backup menyimpan SEMUA data (produk, transaksi, promo, pengaturan) ke file JSON. Simpan file-nya baik-baik — kalau HP ganti atau aplikasi dihapus, Restore file itu buat balikin datanya.</p><div class="row"><button class="o" id="ex" title="Backup">'+ic('down')+' Backup</button><button class="o" id="im" title="Restore">'+ic('up')+' Restore</button></div><input type="file" id="fi" accept=".json" hidden></section>'
++'<section class="c"><h3>Pantau Jarak Jauh</h3>'
++(!s.syncKey
+  ? '<p class="hint">Masukkan kunci sync sekali — setelah tersimpan, kolom ini disembunyikan supaya Setting tetap rapi.</p><div class="fld">'+ic('tag')+'<input id="syncKeyIn" type="password" placeholder="Kunci sync" value=""></div>'
+  : (showSyncKey
+    ? '<p class="hint">Masukkan kunci sync yang baru, lalu tekan Simpan Pengaturan.</p><div class="fld">'+ic('tag')+'<input id="syncKeyIn" type="password" placeholder="Kunci sync baru" value=""></div>'
+    : '<p class="hint">✓ Pantau jarak jauh aktif — penjualan tampil di dashboard pemilik toko.</p><div class="mu" id="syncSt" style="text-align:center"></div><div style="text-align:center;margin-top:6px"><button class="o" id="syncEdit" style="font-size:12px;padding:5px 12px">Ubah kunci</button></div>'))
++'</section>'}
 
 function pickModal(){
 var i=pick.i;
@@ -462,9 +469,10 @@ all("[data-e]",b=>b.onclick=()=>{edit=+b.dataset.e;dimg="";V="p";render();window
 all("[data-r]",b=>b.onclick=()=>{lastTx=S.tx.find(t=>t.no==b.dataset.r);V="r";render()});
 all("[data-x]",b=>b.onclick=()=>{if(confirm("Hapus transaksi?")){S.tx=S.tx.filter(t=>t.no!=b.dataset.x);save();render()}});
 all("[data-hc]",b=>b.onclick=()=>{histChan=b.dataset.hc;render()});
-all("[data-batal]",b=>b.onclick=()=>{if(confirm("Batalkan transaksi #"+b.dataset.batal+"? Transaksi dibatalkan tidak dihitung di Pendapatan.")){var tr=S.tx.find(x=>x.no==b.dataset.batal);if(tr){tr.st="cancel";save();render()}}});
+all("[data-batal]",b=>b.onclick=()=>{if(confirm("Batalkan transaksi #"+b.dataset.batal+"? Transaksi dibatalkan tidak dihitung di Pendapatan.")){var tr=S.tx.find(x=>x.no==b.dataset.batal);if(tr){tr.st="cancel";save();syncQueue(tr);render()}}});
 on("#csv",()=>{function cq(s){return '"'+String(s==null?"":s).replace(/"/g,"'")+'"'}var r=["no,waktu,channel,customer,item,diskon,pajak,total,bayar,kembali,status"];S.tx.forEach(function(tx){r.push([tx.no,new Date(tx.t).toLocaleString("id-ID"),cq(tx.ch||""),cq(tx.cust||""),cq(tx.items.map(function(i){return i.q+"x "+i.n+((i.v||i.ih)?" ("+[i.v,i.ih].filter(Boolean).join(", ")+")":"")}).join("; ")),tx.disc,tx.tax||0,tx.total,tx.pay,tx.chg,tx.st||"selesai"].join(","))});dl("transaksi.csv",r.join("\n"),"text/csv")});
-on("#ss",()=>{var old=S.set;S.set={name:$("#sn").value,tag:$("#sg").value,addr:$("#sa").value,foot:$("#sf").value,w:+$("#sw").value,tax:+$("#st").value||0,pm:old.pm||"rawbt",wa:($("#swa").value||"").trim(),btMac:old.btMac};save();toast("Tersimpan");render()});
+var se=$("#syncEdit");if(se)se.onclick=()=>{showSyncKey=true;render()};syncStatus();
+on("#ss",()=>{var old=S.set;var skIn=document.querySelector("#syncKeyIn");var sk=skIn?(skIn.value||"").trim():"";S.set={name:$("#sn").value,tag:$("#sg").value,addr:$("#sa").value,foot:$("#sf").value,w:+$("#sw").value,tax:+$("#st").value||0,pm:old.pm||"rawbt",wa:($("#swa").value||"").trim(),btMac:old.btMac,syncKey:(sk||old.syncKey||"")};showSyncKey=false;save();syncFlush();toast("Tersimpan");render()});
 on("#bt",()=>{
   if(isNative()){
     btEnsure().then(()=>{ toast("Printer nyambung"); render(); }).catch(e=>{ toast(e.message); render(); });
@@ -500,6 +508,46 @@ function dl(n,c,m){
   dlAnchor(n,blob);
 }
 function dlAnchor(n,blob){var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=n;document.body.appendChild(a);a.click();a.remove();toast("File diunduh: "+n)}
+/* ---- Pantau Jarak Jauh: kirim salinan transaksi ke dashboard Cloudflare ----
+   Lokal dulu, sync belakangan. Checkout/struk/print TIDAK menunggu sync.
+   Kalau gagal (offline/server down), transaksi masuk antrean (kasir_syncq)
+   dan dikirim ulang otomatis. Sync TIDAK PERNAH memblokir kasir. */
+var PANTAU_URL="https://kasir-manici-pantau.pages.dev",showSyncKey=false;
+function syncGetQ(){try{return JSON.parse(localStorage.getItem("kasir_syncq")||"[]")}catch(e){return[]}}
+function syncSetQ(q){try{localStorage.setItem("kasir_syncq",JSON.stringify(q))}catch(e){}}
+function syncKey(){return (S.set.syncKey||"").trim()}
+function syncEnabled(){return !!syncKey()}
+function syncMarkOk(){try{localStorage.setItem("kasir_synclast",new Date().toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"}))}catch(e){}}
+async function syncSend(tx){
+  if(!syncEnabled())return false;
+  try{
+    var r=await fetch(PANTAU_URL+"/api/sync",{method:"POST",headers:{"content-type":"application/json","x-sync-key":syncKey()},body:JSON.stringify({store:(S.set.name||"manici").toLowerCase(),tx:tx})});
+    var j=await r.json().catch(function(){return{}});
+    if(r.ok&&j.ok){syncMarkOk();return true}
+    return false;
+  }catch(e){return false}
+}
+async function syncFlush(){
+  if(!syncEnabled())return;
+  var q=syncGetQ();if(!q.length)return;
+  var rest=[];
+  for(var i=0;i<q.length;i++){var ok=await syncSend(q[i]);if(!ok)rest.push(q[i])}
+  syncSetQ(rest);syncStatus();
+}
+function syncQueue(tx){
+  if(!syncEnabled())return;
+  var q=syncGetQ();
+  var day=function(t){return new Date(t).toDateString()};
+  q=q.filter(function(t){return !(t.no===tx.no&&day(t.t)===day(tx.t))});
+  q.push(tx);syncSetQ(q);syncStatus();
+  syncFlush();
+}
+function syncStatus(){
+  var el=document.querySelector("#syncSt");if(!el)return;
+  var q=syncGetQ(),last="";
+  try{last=localStorage.getItem("kasir_synclast")||""}catch(e){}
+  el.textContent=q.length?("Menunggu kirim: "+q.length+" transaksi"+(last?" · terakhir "+last:"")):("Tersinkron"+(last?" · terakhir "+last:""));
+}
 function checkout(pr){
 if(!cart.length)return toast("Keranjang kosong");
 var K=calc();if(pay&&pay<K.tot)return toast("Uang kurang");var py=pay||K.tot;S.no++;
@@ -508,7 +556,7 @@ if(promoSel){discType=promoSel.type;discPct=promoSel.type==="pct"?+promoSel.val:
 else if(dd){discType="pct";discPct=dd}
 var t={no:S.no,t:Date.now(),items:cart.map(c=>({n:c.n,p:c.p,q:c.q,v:c.v||null,ih:c.ih||null})),sub:K.sub,disc:K.ds,discPct:discPct,discType:discType,tax:K.tx,total:K.tot,pay:py,chg:py-K.tot,ch:chan,cust:(custName||"").trim(),promo:promoSel?promoSel.name:null};
 cart.forEach(c=>{var i=S.items.find(x=>x.id==c.id);if(i&&stk(i))i.s=Math.max(0,i.s-c.q)});
-S.tx.push(t);save();cart=[];dd=0;pay=0;paying=false;promoSel=null;lastTx=t;toast("Transaksi #"+t.no+" beres");if(pr)out(t);V="r";render()}
+S.tx.push(t);save();syncQueue(t);cart=[];dd=0;pay=0;paying=false;promoSel=null;lastTx=t;toast("Transaksi #"+t.no+" beres");if(pr)out(t);V="r";render()}
 function lr(a,b,w){var sp=w-a.length-b.length;return sp<1?a.slice(0,w-b.length-1)+" "+b:a+" ".repeat(sp)+b}
 function ct(s,w){s=s.slice(0,w);return " ".repeat(Math.floor((w-s.length)/2))+s}
 
@@ -801,6 +849,7 @@ var u=new Uint8Array([27,64].concat(Array.from(bytes),[10,10,10,10]));
 for(var i=0;i<u.length;i+=100){var p=u.slice(i,i+100);if(ch.properties.writeWithoutResponse)await ch.writeValueWithoutResponse(p);else await ch.writeValue(p);await new Promise(r=>setTimeout(r,30))}}
 
 render();
+setTimeout(syncFlush,1500);
 </script>
 <div id="rcptHtml"></div>
 </body>
