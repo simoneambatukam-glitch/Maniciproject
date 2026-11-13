@@ -492,11 +492,35 @@ var vs=[];document.querySelectorAll(".vn").forEach(function(inp,ix){var pr=docum
 var it={id:e?e.id:Date.now(),n:n,p:+pr,c:$("#pc").value.trim(),s:st===""?"":+st,b:b,img:dimg||(e&&e.img)||"",v:vs.length?vs:undefined};
 if(e)S.items[S.items.indexOf(e)]=it;else S.items.push(it);edit=null;dimg="";save();toast("Tersimpan");render()}
 
-/* Unduh file: di APK (WebView Android) klik anchor blob TIDAK jalan — tidak ada
-   download manager. Jadi di APK pakai share sheet Android (navigator.share):
-   file bisa disimpan ke Drive / Files / WhatsApp. Di browser biasa tetap
-   pakai download anchor. Dipakai Backup JSON dan laporan CSV. */
-function dl(n,c,m){
+/* Unduh file — DIPERBAIKI 13 Nov (sesuai rencana): share sheet web
+   (navigator.share) TIDAK jalan di WebView Samsung (canShare false) dan
+   download anchor juga tidak jalan di APK, jadi toast "File diunduh" bohong.
+   Di APK pakai plugin NATIVE Capacitor: Filesystem tulis file ke Cache
+   (UTF8, tanpa izin storage), getUri, lalu Share buka share sheet ANDROID
+   asli. Semua langkah + error dicatat ke plog (Lihat Log Print). Di browser
+   biasa tetap pakai share web / download anchor. Dipakai Backup JSON dan
+   laporan CSV. Isi data backup TIDAK diubah. */
+async function dl(n,c,m){
+  var cap=window.Capacitor, FS=cap&&cap.Plugins&&cap.Plugins.Filesystem, SH=cap&&cap.Plugins&&cap.Plugins.Share;
+  if(cap&&cap.isNativePlatform&&cap.isNativePlatform()&&FS&&SH){
+    try{
+      plog("backup: jalur NATIVE (Capacitor)");
+      await FS.writeFile({path:n,data:c,directory:"CACHE",encoding:"UTF8"});
+      var u=await FS.getUri({path:n,directory:"CACHE"});
+      plog("backup: file ditulis ke Cache, uri="+u.uri);
+      await SH.share({title:"Backup Kasir",files:[u.uri],dialogTitle:"Simpan backup"});
+      plog("backup: share sheet dibuka");
+      toast("Backup siap dibagikan");
+    }catch(e){
+      var msg=e&&e.message?e.message:String(e);
+      plog("backup: GAGAL "+msg);
+      if(/cancel|batal|dismiss|abort/i.test(msg)){ toast("Backup dibatalkan"); }
+      else{ toast("Backup gagal: "+msg); }
+    }
+    plogDone();
+    return;
+  }
+  plog("backup: jalur BROWSER (download)");
   var blob=new Blob([c],{type:m}), file=null;
   try{ file=new File([blob],n,{type:m}); }catch(e){}
   if(file && navigator.canShare && navigator.canShare({files:[file]})){
